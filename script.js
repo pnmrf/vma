@@ -2,12 +2,19 @@
  * ==================== ВИРТУАЛЬНЫЙ МУЗЕЙ АРХИТЕКТУРЫ СОЧИ ====================
  * 
  * Этот файл содержит всю логику работы музея.
- * Для добавления новых объектов — добавьте их в массив objects ниже.
+ * Включает: 3D просмотр, панели информации, интерактивную карту.
  */
 
 // ==================== ДАННЫЕ ОБЪЕКТОВ ====================
-// Здесь хранится вся информация о музейных экспонатах.
-// Чтобы добавить новый объект, скопируйте структуру и заполните данные.
+/**
+ * Массив объектов музея.
+ * 
+ * Чтобы добавить новый объект:
+ * 1. Скопируйте структуру ниже
+ * 2. Заполните данные
+ * 3. Добавьте координаты в поле coordinates: [широта, долгота]
+ * 4. Добавьте индикатор-точку в HTML (.indicator-dot)
+ */
 
 const objects = [
     {
@@ -15,9 +22,15 @@ const objects = [
         id: 1,
         name: 'Кинотеатр «Спутник»',
         
-        // Путь к 3D модели (замените на свой .glb файл)
-        // Для локального файла: 'models/sputnik.glb'
+        // Координаты для карты [широта, долгота]
+        coordinates: [43.584859, 39.717951],
+        
+        // Путь к 3D модели
         modelUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+        
+        // Изображение для карточки на карте (null = заглушка)
+        // Замените на путь к своему изображению: 'images/sputnik-preview.jpg'
+        previewImage: null,
         
         // Краткая информация для панели "i"
         info: {
@@ -29,7 +42,7 @@ const objects = [
             description: 'Один из знаковых кинотеатров Сочи, построенный в эпоху освоения космоса. Название получил в честь первого искусственного спутника Земли.'
         },
         
-        // Текст статьи (можно добавить несколько абзацев)
+        // Текст статьи
         article: {
             title: 'Кинотеатр «Спутник» — памятник эпохи космической романтики',
             paragraphs: [
@@ -40,20 +53,10 @@ const objects = [
         },
         
         // Изображения для галереи чертежей
-        // Замените на пути к своим изображениям: 'images/sputnik-plan.jpg'
         blueprints: [
-            {
-                url: null, // null = показать заглушку
-                caption: 'Главный фасад, 1961 г.'
-            },
-            {
-                url: null,
-                caption: 'План первого этажа'
-            },
-            {
-                url: null,
-                caption: 'Историческое фото'
-            }
+            { url: null, caption: 'Главный фасад, 1961 г.' },
+            { url: null, caption: 'План первого этажа' },
+            { url: null, caption: 'Историческое фото' }
         ]
     },
     
@@ -62,8 +65,14 @@ const objects = [
         id: 2,
         name: 'Кинотеатр «Родина»',
         
+        // Координаты для карты [широта, долгота]
+        coordinates: [43.600433, 39.721956],
+        
         // Путь к 3D модели
         modelUrl: 'https://modelviewer.dev/shared-assets/models/Horse.glb',
+        
+        // Изображение для карточки на карте
+        previewImage: null,
         
         // Краткая информация
         info: {
@@ -87,29 +96,26 @@ const objects = [
         
         // Изображения для галереи
         blueprints: [
-            {
-                url: null,
-                caption: 'Проект главного фасада'
-            },
-            {
-                url: null,
-                caption: 'Разрез здания'
-            },
-            {
-                url: null,
-                caption: 'Фото 1960-х годов'
-            }
+            { url: null, caption: 'Проект главного фасада' },
+            { url: null, caption: 'Разрез здания' },
+            { url: null, caption: 'Фото 1960-х годов' }
         ]
     }
     
     // ========== ДОБАВЬТЕ НОВЫЕ ОБЪЕКТЫ ЗДЕСЬ ==========
     // Скопируйте структуру выше и заполните данными
+    // Не забудьте добавить coordinates: [широта, долгота]
 ];
 
 // ==================== СОСТОЯНИЕ ПРИЛОЖЕНИЯ ====================
 let currentObjectIndex = 0;
+let map = null;  // Экземпляр карты Leaflet
+let userMarker = null;  // Маркер геолокации пользователя
+let selectedObjectId = null;  // ID выбранного объекта на карте
 
 // ==================== DOM ЭЛЕМЕНТЫ ====================
+// 3D просмотр
+const museumContainer = document.getElementById('museumContainer');
 const modelViewer = document.getElementById('modelViewer');
 const headerTitle = document.getElementById('headerTitle');
 const prevBtn = document.getElementById('prevBtn');
@@ -117,6 +123,7 @@ const nextBtn = document.getElementById('nextBtn');
 const infoBtn = document.getElementById('infoBtn');
 const articleBtn = document.getElementById('articleBtn');
 const blueprintsBtn = document.getElementById('blueprintsBtn');
+const mapBtn = document.getElementById('mapBtn');
 const infoPanel = document.getElementById('infoPanel');
 const articlePanel = document.getElementById('articlePanel');
 const blueprintsPanel = document.getElementById('blueprintsPanel');
@@ -126,33 +133,33 @@ const blueprintsContent = document.getElementById('blueprintsContent');
 const overlay = document.getElementById('overlay');
 const indicatorDots = document.querySelectorAll('.indicator-dot');
 
-// ==================== ФУНКЦИИ ====================
+// Карта
+const mapContainer = document.getElementById('mapContainer');
+const backToModelBtn = document.getElementById('backToModelBtn');
+const mapCard = document.getElementById('mapCard');
+const mapCardClose = document.getElementById('mapCardClose');
+const mapCardTitle = document.getElementById('mapCardTitle');
+const mapCardSubtitle = document.getElementById('mapCardSubtitle');
+const mapCardImage = document.getElementById('mapCardImage');
+const mapCardBtn = document.getElementById('mapCardBtn');
+
+// ==================== ФУНКЦИИ 3D ПРОСМОТРА ====================
 
 /**
  * Загружает данные объекта и обновляет интерфейс
- * @param {number} index - индекс объекта в массиве
  */
 function loadObject(index) {
     const obj = objects[index];
     
-    // Обновляем 3D модель
     modelViewer.src = obj.modelUrl;
-    
-    // Обновляем заголовок
     headerTitle.textContent = obj.name;
     
-    // Обновляем контент панелей
     updateInfoPanel(obj);
     updateArticlePanel(obj);
     updateBlueprintsPanel(obj);
-    
-    // Обновляем индикаторы
     updateIndicators(index);
-    
-    // Обновляем состояние кнопок навигации
     updateNavigationButtons(index);
     
-    // Закрываем все панели при смене объекта
     closeAllPanels();
 }
 
@@ -215,7 +222,6 @@ function updateBlueprintsPanel(obj) {
     const blueprints = obj.blueprints;
     let itemsHTML = blueprints.map((bp, i) => {
         if (bp.url) {
-            // Реальное изображение
             return `
                 <div class="blueprint-item">
                     <img src="${bp.url}" alt="${bp.caption}">
@@ -223,7 +229,6 @@ function updateBlueprintsPanel(obj) {
                 </div>
             `;
         } else {
-            // Заглушка
             return `
                 <div class="blueprint-item">
                     <div class="placeholder-image">
@@ -293,13 +298,232 @@ function closeAllPanels() {
 }
 
 /**
- * Переключает панель (открыть/закрыть)
+ * Переключает панель
  */
 function togglePanel(panel, button) {
     if (panel.classList.contains('open')) {
         closePanel(panel, button);
     } else {
         openPanel(panel, button);
+    }
+}
+
+// ==================== ФУНКЦИИ КАРТЫ ====================
+
+/**
+ * Инициализирует карту Leaflet
+ */
+function initMap() {
+    if (map) return; // Карта уже инициализирована
+    
+    // Создаём карту
+    map = L.map('map', {
+        zoomControl: true,
+        attributionControl: true
+    });
+    
+    // Добавляем тёмный тайловый слой (CartoDB Dark Matter без подписей)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+    
+    // Добавляем хотспоты объектов
+    addObjectMarkers();
+    
+    // Масштабируем карту, чтобы все объекты были видны
+    fitMapToObjects();
+    
+    // Запрашиваем геолокацию пользователя
+    requestUserLocation();
+}
+
+/**
+ * Добавляет маркеры объектов на карту
+ */
+function addObjectMarkers() {
+    objects.forEach(obj => {
+        // Создаём кастомный маркер (хотспот)
+        const hotspotIcon = L.divIcon({
+            className: 'map-hotspot-wrapper',
+            html: '<div class="map-hotspot"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+        
+        // Добавляем маркер на карту
+        const marker = L.marker(obj.coordinates, { icon: hotspotIcon })
+            .addTo(map);
+        
+        // Обработчик клика по маркеру
+        marker.on('click', () => {
+            showMapCard(obj);
+        });
+        
+        // Добавляем подпись (тултип) при наведении
+        marker.bindTooltip(obj.name, {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -15],
+            className: 'map-tooltip'
+        });
+    });
+}
+
+/**
+ * Масштабирует карту, чтобы все объекты были видны
+ */
+function fitMapToObjects() {
+    const bounds = L.latLngBounds(objects.map(obj => obj.coordinates));
+    map.fitBounds(bounds, {
+        padding: [50, 50],  // Отступы по краям
+        maxZoom: 14  // Максимальный зум при автоподгонке
+    });
+}
+
+/**
+ * Запрашивает геолокацию пользователя
+ */
+function requestUserLocation() {
+    if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                addUserMarker(latitude, longitude);
+            },
+            (error) => {
+                console.log('Геолокация недоступна:', error.message);
+                // Можно показать сообщение пользователю
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 60000
+            }
+        );
+        
+        // Отслеживаем изменение позиции
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                updateUserMarker(latitude, longitude);
+            },
+            (error) => {
+                console.log('Ошибка отслеживания геолокации:', error.message);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 30000
+            }
+        );
+    } else {
+        console.log('Геолокация не поддерживается браузером');
+    }
+}
+
+/**
+ * Добавляет маркер пользователя на карту
+ */
+function addUserMarker(lat, lng) {
+    const userIcon = L.divIcon({
+        className: 'user-location-wrapper',
+        html: '<div class="user-location"></div>',
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+    });
+    
+    userMarker = L.marker([lat, lng], { icon: userIcon })
+        .addTo(map)
+        .bindTooltip('Вы здесь', {
+            permanent: false,
+            direction: 'top',
+            offset: [0, -10]
+        });
+}
+
+/**
+ * Обновляет позицию маркера пользователя
+ */
+function updateUserMarker(lat, lng) {
+    if (userMarker) {
+        userMarker.setLatLng([lat, lng]);
+    } else {
+        addUserMarker(lat, lng);
+    }
+}
+
+/**
+ * Показывает карточку объекта на карте
+ */
+function showMapCard(obj) {
+    selectedObjectId = obj.id;
+    
+    // Заполняем данные карточки
+    mapCardTitle.textContent = obj.name;
+    mapCardSubtitle.textContent = `${obj.info.year} г. • ${obj.info.architect}`;
+    
+    // Изображение
+    if (obj.previewImage) {
+        mapCardImage.innerHTML = `<img src="${obj.previewImage}" alt="${obj.name}">`;
+    } else {
+        mapCardImage.innerHTML = `
+            <div class="placeholder-image">
+                <span class="icon">🏛️</span>
+            </div>
+        `;
+    }
+    
+    // Показываем карточку
+    mapCard.classList.add('active');
+}
+
+/**
+ * Скрывает карточку объекта
+ */
+function hideMapCard() {
+    mapCard.classList.remove('active');
+    selectedObjectId = null;
+}
+
+/**
+ * Открывает экран карты
+ */
+function showMap() {
+    mapContainer.classList.add('active');
+    museumContainer.classList.add('hidden');
+    mapBtn.classList.add('active');
+    
+    // Инициализируем карту при первом открытии
+    setTimeout(() => {
+        initMap();
+        // Принудительно обновляем размер карты
+        if (map) {
+            map.invalidateSize();
+        }
+    }, 100);
+}
+
+/**
+ * Закрывает экран карты и возвращается к 3D
+ */
+function hideMap() {
+    mapContainer.classList.remove('active');
+    museumContainer.classList.remove('hidden');
+    mapBtn.classList.remove('active');
+    hideMapCard();
+}
+
+/**
+ * Переходит к 3D просмотру выбранного объекта
+ */
+function goTo3DView(objectId) {
+    const index = objects.findIndex(obj => obj.id === objectId);
+    if (index !== -1) {
+        currentObjectIndex = index;
+        loadObject(currentObjectIndex);
+        hideMap();
     }
 }
 
@@ -333,6 +557,25 @@ infoBtn.addEventListener('click', () => togglePanel(infoPanel, infoBtn));
 articleBtn.addEventListener('click', () => togglePanel(articlePanel, articleBtn));
 blueprintsBtn.addEventListener('click', () => togglePanel(blueprintsPanel, blueprintsBtn));
 
+// Кнопка карты
+mapBtn.addEventListener('click', () => {
+    closeAllPanels();
+    showMap();
+});
+
+// Кнопка возврата с карты
+backToModelBtn.addEventListener('click', hideMap);
+
+// Закрытие карточки на карте
+mapCardClose.addEventListener('click', hideMapCard);
+
+// Кнопка "Смотреть в 3D" на карточке
+mapCardBtn.addEventListener('click', () => {
+    if (selectedObjectId) {
+        goTo3DView(selectedObjectId);
+    }
+});
+
 // Кнопки закрытия панелей
 document.querySelectorAll('.close-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -353,24 +596,47 @@ overlay.addEventListener('click', closeAllPanels);
 // Закрытие по Escape
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-        closeAllPanels();
+        if (mapContainer.classList.contains('active')) {
+            if (mapCard.classList.contains('active')) {
+                hideMapCard();
+            } else {
+                hideMap();
+            }
+        } else {
+            closeAllPanels();
+        }
     }
 });
 
-// Навигация клавишами
+// Навигация клавишами (стрелки)
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft' && currentObjectIndex > 0) {
-        currentObjectIndex--;
-        loadObject(currentObjectIndex);
+    // Только если карта закрыта
+    if (!mapContainer.classList.contains('active')) {
+        if (e.key === 'ArrowLeft' && currentObjectIndex > 0) {
+            currentObjectIndex--;
+            loadObject(currentObjectIndex);
+        }
+        if (e.key === 'ArrowRight' && currentObjectIndex < objects.length - 1) {
+            currentObjectIndex++;
+            loadObject(currentObjectIndex);
+        }
     }
-    if (e.key === 'ArrowRight' && currentObjectIndex < objects.length - 1) {
-        currentObjectIndex++;
-        loadObject(currentObjectIndex);
+});
+
+// Клик по карте закрывает карточку
+document.getElementById('map')?.addEventListener('click', (e) => {
+    // Закрываем карточку только если клик не по маркеру
+    if (!e.target.closest('.map-hotspot-wrapper')) {
+        // Небольшая задержка, чтобы не конфликтовать с кликом по маркеру
+        setTimeout(() => {
+            if (mapCard.classList.contains('active') && !e.target.closest('.map-card')) {
+                // hideMapCard(); // Раскомментируйте, если хотите закрывать по клику на карту
+            }
+        }, 100);
     }
 });
 
 // ==================== ИНИЦИАЛИЗАЦИЯ ====================
-// Загружаем первый объект при старте
 document.addEventListener('DOMContentLoaded', () => {
     loadObject(0);
 });
