@@ -1,0 +1,556 @@
+/* ==================== СБРОС И БАЗОВЫЕ СТИЛИ ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Цветовая палитра — измените здесь для смены темы */
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #15151f;
+    --bg-panel: rgba(20, 20, 30, 0.95);
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0b0;
+    --accent-color: #4a9eff;
+    --accent-hover: #6bb3ff;
+    --border-color: rgba(255, 255, 255, 0.1);
+    
+    /* Размеры */
+    --panel-width: 400px;
+    --nav-height: 80px;
+    --header-height: 60px;
+    --border-radius: 12px;
+    --transition-speed: 0.3s;
+}
+
+html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    overflow: hidden;
+}
+
+/* ==================== ОСНОВНОЙ КОНТЕЙНЕР ==================== */
+.museum-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==================== ЗАГОЛОВОК ==================== */
+.museum-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    padding: 15px 20px;
+    background: linear-gradient(to bottom, rgba(10, 10, 15, 0.9), transparent);
+    text-align: center;
+}
+
+.museum-header h1 {
+    font-size: 1.2rem;
+    font-weight: 300;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+}
+
+.current-object-name {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+/* ==================== 3D МОДЕЛЬ (MODEL-VIEWER) ==================== */
+model-viewer {
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-primary);
+    --poster-color: var(--bg-primary);
+}
+
+/* Индикатор загрузки */
+.loading-overlay {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+}
+
+.loader {
+    width: 50px;
+    height: 50px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ==================== ПАНЕЛЬ НАВИГАЦИИ ==================== */
+.navigation-panel {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: linear-gradient(to top, rgba(10, 10, 15, 0.95), transparent);
+    gap: 10px;
+}
+
+/* Кнопки навигации (Предыдущий/Следующий) */
+.nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+}
+
+.nav-btn:hover {
+    background: rgba(74, 158, 255, 0.2);
+    border-color: var(--accent-color);
+}
+
+.nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.btn-icon {
+    font-size: 1.2rem;
+}
+
+/* Центральные кнопки действий */
+.nav-center {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+}
+
+.action-btn:hover {
+    background: rgba(74, 158, 255, 0.2);
+    border-color: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.action-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Индикатор объектов (точки) */
+.object-indicator {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    z-index: 5;
+}
+
+.indicator-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border-color);
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+}
+
+.indicator-dot.active {
+    background: var(--accent-color);
+    transform: scale(1.3);
+}
+
+.indicator-dot:hover {
+    background: var(--text-secondary);
+}
+
+/* ==================== ВЫДВИГАЮЩИЕСЯ ПАНЕЛИ ==================== */
+.slide-panel {
+    position: absolute;
+    z-index: 100;
+    background: var(--bg-panel);
+    backdrop-filter: blur(20px);
+    transition: transform var(--transition-speed) ease;
+    overflow-y: auto;
+}
+
+/* Панель информации — справа */
+.info-panel {
+    top: 0;
+    right: 0;
+    width: var(--panel-width);
+    height: 100%;
+    transform: translateX(100%);
+    border-left: 1px solid var(--border-color);
+}
+
+/* Панель статьи — справа */
+.article-panel {
+    top: 0;
+    right: 0;
+    width: var(--panel-width);
+    height: 100%;
+    transform: translateX(100%);
+    border-left: 1px solid var(--border-color);
+}
+
+/* Панель чертежей — снизу */
+.blueprints-panel {
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60%;
+    transform: translateY(100%);
+    border-top: 1px solid var(--border-color);
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+/* Открытое состояние панелей */
+.slide-panel.open {
+    transform: translateX(0) translateY(0);
+}
+
+/* Заголовок панели */
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    background: var(--bg-panel);
+    z-index: 1;
+}
+
+.panel-header h2 {
+    font-size: 1.3rem;
+    font-weight: 500;
+}
+
+.close-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all var(--transition-speed) ease;
+}
+
+.close-btn:hover {
+    background: rgba(255, 100, 100, 0.2);
+    border-color: #ff6464;
+}
+
+/* Содержимое панели */
+.panel-content {
+    padding: 20px;
+}
+
+/* ==================== СТИЛИ КОНТЕНТА ПАНЕЛЕЙ ==================== */
+
+/* Информация */
+.info-item {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+/* Статья */
+.article-title {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: var(--accent-color);
+}
+
+.article-text {
+    line-height: 1.8;
+    color: var(--text-secondary);
+    margin-bottom: 15px;
+}
+
+.article-text:last-child {
+    margin-bottom: 0;
+}
+
+/* Галерея чертежей */
+.blueprints-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.blueprint-item {
+    position: relative;
+    aspect-ratio: 4/3;
+    background: var(--bg-secondary);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform var(--transition-speed) ease;
+}
+
+.blueprint-item:hover {
+    transform: scale(1.02);
+}
+
+.blueprint-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.blueprint-caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px;
+    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+    font-size: 0.9rem;
+}
+
+/* Заглушка для изображений */
+.placeholder-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-primary));
+    color: var(--text-secondary);
+}
+
+.placeholder-image .icon {
+    font-size: 3rem;
+    margin-bottom: 10px;
+}
+
+/* ==================== ЗАТЕМНЕНИЕ (OVERLAY) ==================== */
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-speed) ease;
+    z-index: 50;
+}
+
+.overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* ==================== АДАПТИВНОСТЬ ==================== */
+
+/* Планшеты */
+@media (max-width: 1024px) {
+    :root {
+        --panel-width: 350px;
+    }
+    
+    .museum-header h1 {
+        font-size: 1rem;
+    }
+    
+    .current-object-name {
+        font-size: 1.3rem;
+    }
+}
+
+/* Мобильные устройства */
+@media (max-width: 768px) {
+    :root {
+        --panel-width: 100%;
+        --nav-height: 70px;
+    }
+    
+    .museum-header {
+        padding: 10px 15px;
+    }
+    
+    .museum-header h1 {
+        font-size: 0.85rem;
+    }
+    
+    .current-object-name {
+        font-size: 1.1rem;
+    }
+    
+    /* Навигация — компактнее */
+    .navigation-panel {
+        padding: 10px 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .nav-btn {
+        padding: 10px 15px;
+        font-size: 0.85rem;
+    }
+    
+    .btn-text {
+        display: none; /* Скрываем текст, оставляем стрелки */
+    }
+    
+    .action-btn {
+        width: 45px;
+        height: 45px;
+        font-size: 1rem;
+    }
+    
+    /* Панели — на всю ширину снизу */
+    .info-panel,
+    .article-panel {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        height: 70%;
+        transform: translateY(100%);
+        border-left: none;
+        border-top: 1px solid var(--border-color);
+        border-radius: var(--border-radius) var(--border-radius) 0 0;
+    }
+    
+    .blueprints-panel {
+        height: 80%;
+    }
+    
+    .blueprints-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+    }
+    
+    .object-indicator {
+        bottom: 90px;
+    }
+}
+
+/* Маленькие мобильные */
+@media (max-width: 480px) {
+    .nav-center {
+        order: -1;
+        width: 100%;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+    
+    .nav-btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .panel-content {
+        padding: 15px;
+    }
+    
+    .article-title {
+        font-size: 1.2rem;
+    }
+}
+
+/* ==================== ДОПОЛНИТЕЛЬНЫЕ ЭФФЕКТЫ ==================== */
+
+/* Плавное появление */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.panel-content {
+    animation: fadeIn 0.3s ease;
+}
+
+/* Свечение для активных элементов */
+.action-btn.active {
+    box-shadow: 0 0 20px rgba(74, 158, 255, 0.4);
+}
+
+/* Скроллбар */
+.slide-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.slide-panel::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.slide-panel::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.slide-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
